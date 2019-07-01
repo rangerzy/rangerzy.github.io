@@ -10,10 +10,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="google" content="notranslate">
     <meta name="keywords" content="Saberzy,"> 
-    <meta name="description" content="一次mysql order by desc 慢的排查前几天帮同事排查了一个sql慢的原因, 觉得有点意思, 这里记录一下
+    <meta name="description" content="前几天帮同事排查了一个sql慢的原因, 觉得有点意思, 这里记录一下
 一、问题描述有这么一个表:
 
-备注: 表是我直接复制过来的,但表中的inno,"> 
+备注: 表是我直接复制过来的,但表中的innodb的主键是UUID,其实是不合理的,innodb一,"> 
     <meta name="author" content="saberzy"> 
     <link rel="alternative" href="atom.xml" title="YongZhang&#39;s Blog" type="application/atom+xml"> 
     <link rel="icon" href="/img/favicon.png"> 
@@ -65,7 +65,7 @@
 
         </div>
         <div class="content markdown">
-            <h1 id="一次mysql-order-by-desc-慢的排查"><a href="#一次mysql-order-by-desc-慢的排查" class="headerlink" title="一次mysql order by desc 慢的排查"></a>一次mysql order by desc 慢的排查</h1><p>前几天帮同事排查了一个sql慢的原因, 觉得有点意思, 这里记录一下</p>
+            <p>前几天帮同事排查了一个sql慢的原因, 觉得有点意思, 这里记录一下</p>
 <h3 id="一、问题描述"><a href="#一、问题描述" class="headerlink" title="一、问题描述"></a>一、问题描述</h3><p>有这么一个表:</p>
 <blockquote>
 <p>备注: 表是我直接复制过来的,但表中的innodb的主键是UUID,其实是不合理的,innodb一般要求主键是单调递增,否则在频繁插入的时候, innodb的B+树会频繁地进行分裂,非常影响性能.</p>
@@ -238,7 +238,7 @@
     </div>
     
         <div class="side">
-            <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一次mysql-order-by-desc-慢的排查"><span class="toc-number">1.</span> <span class="toc-text">一次mysql order by desc 慢的排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#一、问题描述"><span class="toc-number">1.0.1.</span> <span class="toc-text">一、问题描述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#二、问题排查"><span class="toc-number">1.0.2.</span> <span class="toc-text">二、问题排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#三、问题分析"><span class="toc-number">1.0.3.</span> <span class="toc-text">三、问题分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#四、总结"><span class="toc-number">1.0.4.</span> <span class="toc-text">四、总结</span></a></li></ol></li></ol>
+            <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#一、问题描述"><span class="toc-number">1.</span> <span class="toc-text">一、问题描述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#二、问题排查"><span class="toc-number">2.</span> <span class="toc-text">二、问题排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#三、问题分析"><span class="toc-number">3.</span> <span class="toc-text">三、问题分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#四、总结"><span class="toc-number">4.</span> <span class="toc-text">四、总结</span></a></li></ol>
         </div>
     
 </div>
