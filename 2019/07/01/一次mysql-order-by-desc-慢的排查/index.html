@@ -1,0 +1,310 @@
+
+<!DOCTYPE html>
+<html lang="zh" class="loading">
+<head><meta name="generator" content="Hexo 3.8.0">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>一次mysql order by desc 慢的排查 - YongZhang&#39;s Blog</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate">
+    <meta name="keywords" content="Saberzy,"> 
+    <meta name="description" content="一次mysql order by desc 慢的排查前几天帮同事排查了一个sql慢的原因, 觉得有点意思, 这里记录一下
+一、问题描述有这么一个表:
+
+备注: 表是我直接复制过来的,但表中的inno,"> 
+    <meta name="author" content="saberzy"> 
+    <link rel="alternative" href="atom.xml" title="YongZhang&#39;s Blog" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads" src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+</head>
+</html>
+<body class="loading">
+    <span id="config-title" style="display:none">YongZhang&#39;s Blog</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;" data-url="http://saberzy.me"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">一次mysql order by desc 慢的排查</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class="main">
+        <h1 class="title">一次mysql order by desc 慢的排查</h1>
+        <div class="stuff">
+            <span>七月 01, 2019</span>
+            
+  <ul class="post-tags-list"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/MySQL/">MySQL</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <h1 id="一次mysql-order-by-desc-慢的排查"><a href="#一次mysql-order-by-desc-慢的排查" class="headerlink" title="一次mysql order by desc 慢的排查"></a>一次mysql order by desc 慢的排查</h1><p>前几天帮同事排查了一个sql慢的原因, 觉得有点意思, 这里记录一下</p>
+<h3 id="一、问题描述"><a href="#一、问题描述" class="headerlink" title="一、问题描述"></a>一、问题描述</h3><p>有这么一个表:</p>
+<blockquote>
+<p>备注: 表是我直接复制过来的,但表中的innodb的主键是UUID,其实是不合理的,innodb一般要求主键是单调递增,否则在频繁插入的时候, innodb的B+树会频繁地进行分裂,非常影响性能.</p>
+</blockquote>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> <span class="string">`spider_record`</span> (</span><br><span class="line">  <span class="string">`id`</span> <span class="built_in">varchar</span>(<span class="number">32</span>) <span class="built_in">CHARACTER</span> <span class="keyword">SET</span> utf8mb4 <span class="keyword">COLLATE</span> utf8mb4_bin <span class="keyword">NOT</span> <span class="literal">NULL</span>,</span><br><span class="line">  <span class="string">`platform_id`</span> <span class="built_in">int</span>(<span class="number">11</span>) <span class="keyword">DEFAULT</span> <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'平台推文id'</span>,</span><br><span class="line">  <span class="string">`titile`</span> <span class="built_in">varchar</span>(<span class="number">200</span>) <span class="built_in">CHARACTER</span> <span class="keyword">SET</span> utf8mb4 <span class="keyword">COLLATE</span> utf8mb4_bin <span class="keyword">DEFAULT</span> <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'标题'</span>,</span><br><span class="line">  <span class="string">`description`</span> <span class="built_in">varchar</span>(<span class="number">800</span>) <span class="built_in">CHARACTER</span> <span class="keyword">SET</span> utf8mb4 <span class="keyword">COLLATE</span> utf8mb4_bin <span class="keyword">DEFAULT</span> <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'描述'</span>,</span><br><span class="line">  <span class="string">`updated_at`</span> datetime <span class="keyword">DEFAULT</span> <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'更新日期'</span>,</span><br><span class="line">  <span class="string">`news_url`</span> <span class="built_in">varchar</span>(<span class="number">255</span>) <span class="built_in">CHARACTER</span> <span class="keyword">SET</span> utf8mb4 <span class="keyword">COLLATE</span> utf8mb4_bin <span class="keyword">DEFAULT</span> <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'原文链接'</span>,</span><br><span class="line">  <span class="string">`published_at`</span> datetime <span class="keyword">DEFAULT</span> <span class="literal">NULL</span> <span class="keyword">COMMENT</span> <span class="string">'推送日期'</span>,</span><br><span class="line">  <span class="string">`create_by`</span> <span class="built_in">varchar</span>(<span class="number">32</span>) <span class="built_in">CHARACTER</span> <span class="keyword">SET</span> utf8mb4 <span class="keyword">COLLATE</span> utf8mb4_bin <span class="keyword">DEFAULT</span> <span class="literal">NULL</span>,</span><br><span class="line">  <span class="string">`create_time`</span> datetime <span class="keyword">DEFAULT</span> <span class="literal">NULL</span>,</span><br><span class="line">  <span class="string">`update_by`</span> <span class="built_in">varchar</span>(<span class="number">32</span>) <span class="built_in">CHARACTER</span> <span class="keyword">SET</span> utf8mb4 <span class="keyword">COLLATE</span> utf8mb4_bin <span class="keyword">DEFAULT</span> <span class="literal">NULL</span>,</span><br><span class="line">  <span class="string">`update_time`</span> datetime <span class="keyword">DEFAULT</span> <span class="literal">NULL</span>,</span><br><span class="line">  <span class="string">`is_analyze`</span> <span class="built_in">tinyint</span>(<span class="number">2</span>) <span class="keyword">DEFAULT</span> <span class="string">'0'</span> <span class="keyword">COMMENT</span> <span class="string">'是否分析 0否 1是'</span>,</span><br><span class="line">  <span class="keyword">KEY</span> <span class="string">`platform_id_idx`</span> (<span class="string">`platform_id`</span>),</span><br><span class="line">  <span class="keyword">KEY</span> <span class="string">`create_tm_idx`</span> (<span class="string">`create_time`</span>)</span><br><span class="line">) <span class="keyword">ENGINE</span>=<span class="keyword">InnoDB</span> <span class="keyword">DEFAULT</span> <span class="keyword">CHARSET</span>=utf8;</span><br><span class="line">`</span><br></pre></td></tr></table></figure>
+
+<p>表中的数据只有14万(算很小的表了), mysql的版本是5.7, 环境是自己开发的电脑, 中高配(8G内存+SSD硬盘)</p>
+<p>有以下一个sql(sql1), 刚开始执行的时候还比较快, 但当同一个执行了上千次以后, 单次sql的执行时间变得非常的慢, 最慢的可以达到30多秒.</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="keyword">id</span>,</span><br><span class="line">  titile,</span><br><span class="line">  published_at </span><br><span class="line"><span class="keyword">from</span> spider_record </span><br><span class="line">  <span class="keyword">where</span> is_analyze=<span class="number">0</span> </span><br><span class="line"><span class="keyword">ORDER</span> <span class="keyword">BY</span> create_time <span class="keyword">desc</span> </span><br><span class="line"><span class="keyword">LIMIT</span>  <span class="number">10</span>; // sql1</span><br></pre></td></tr></table></figure>
+
+<p>所以问题就是:</p>
+<ul>
+<li>为什么14万数据会查询这么慢, 就算全表扫描也不至于这么慢?</li>
+<li>为什么把desc去掉后, 就不慢啦?</li>
+</ul>
+<p>到网上查找一些类似的问题, 有几种说法:</p>
+<ul>
+<li>mysql没有开启缓存. 但是查看本地( show variables like ‘%query_cache%’; )的配置是开了的.</li>
+<li>order by没有走索引. 但是就算没有走索引,也不应该是这么慢.(实际上我们的sql是走索引了的, 参见下面的explain)</li>
+</ul>
+<p>所以网上的解决方案并不适用于我们这里, 只能自己解决</p>
+<h3 id="二、问题排查"><a href="#二、问题排查" class="headerlink" title="二、问题排查"></a>二、问题排查</h3><p><strong>explain</strong></p>
+<p>首先看到sql执行慢, 第一反应肯定是查看执行计划:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">mysql&gt;</span>  EXPLAIN </span><br><span class="line">SELECT id,titile,published_at from spider_record where is_analyze=0 ORDER BY create_time desc LIMIT  10;</span><br><span class="line">+----+-------------+---------------+------------+-------+---------------+---------------+---------+------+------+----------+-------------+</span><br><span class="line">| id | select_type | table         | partitions | type  | possible_keys | key           | key_len | ref  | rows | filtered | Extra       |</span><br><span class="line">+----+-------------+---------------+------------+-------+---------------+---------------+---------+------+------+----------+-------------+</span><br><span class="line">|  1 | SIMPLE      | spider_record | NULL       | index | NULL          | create_tm_idx | 6       | NULL |   10 |    10.00 | Using where |</span><br><span class="line">+----+-------------+---------------+------------+-------+---------------+---------------+---------+------+------+----------+-------------+</span><br><span class="line">1 row in set (0.05 sec)</span><br><span class="line"></span><br><span class="line"><span class="meta">mysql&gt;</span>  EXPLAIN </span><br><span class="line">SELECT id,titile,published_at from spider_record where is_analyze=0 ORDER BY create_time LIMIT  10;</span><br><span class="line">+----+-------------+---------------+------------+-------+---------------+---------------+---------+------+------+----------+-------------+</span><br><span class="line">| id | select_type | table         | partitions | type  | possible_keys | key           | key_len | ref  | rows | filtered | Extra       |</span><br><span class="line">+----+-------------+---------------+------------+-------+---------------+---------------+---------+------+------+----------+-------------+</span><br><span class="line">|  1 | SIMPLE      | spider_record | NULL       | index | NULL          | create_tm_idx | 6       | NULL |   10 |    10.00 | Using where |</span><br><span class="line">+----+-------------+---------------+------------+-------+---------------+---------------+---------+------+------+----------+-------------+</span><br><span class="line">1 row in set (0.04 sec)</span><br></pre></td></tr></table></figure>
+
+<p>然而, 两个sql的执行计划都是一模一样的, type都是”index”说明是扫描了索引树,key是”create_tm_idx”说明是扫描了”create_tm_idx”的索引树去查找数据. 总之从执行计划来看, sql层面没有什么问题,也不至于这么慢.</p>
+<p><strong>show profiles</strong></p>
+<p>既然通过执行计划没看出什么异常, 那么我们就来第二招, show profiles</p>
+<ul>
+<li><p>先执行一下sql, 可以看到整个sql是耗时了10秒多的</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">  mysql&gt;</span> SELECT id,titile,published_at from spider_record where is_analyze=0 ORDER BY create_time desc LIMIT  10;</span><br><span class="line">+----------------------------------+--------------------------------------------+---------------------+</span><br><span class="line">| id                               | titile                                     | published_at        |</span><br><span class="line">+----------------------------------+--------------------------------------------+---------------------+</span><br><span class="line">| 980a0aee8ca0eab8c9d7e830ae8dad89 | AT&amp;T明年或收购沃达丰：中移动卷入交易传闻   | 2013-11-01 09:02:05 |</span><br><span class="line">| 95412ea5c82f4c7878ed9ce59f6ec496 | 58同城上市首日上涨41.88%                   | 2013-11-01 07:59:28 |</span><br><span class="line">| 93142044d8cfe8ab3ed5c21be2a538b3 | 腾讯联席CTO熊明华离职                      | 2013-11-01 17:02:55 |</span><br><span class="line">| 896fe75c842ef2c6e28ed9f6a7884873 | 阿里小微金融公布股权架构：马云持股不超7.3% | 2013-11-01 09:23:14 |</span><br><span class="line">| 851c98dbddc1883d8733b713ea682325 | 手机预装软件今日起“被规范” 谁将受到冲击？  | 2013-11-01 14:22:52 |</span><br><span class="line">| 85172df9b1c6ee02cb1afcd6ffe2ae66 | 消息称搜狐总编辑刘春将离职                 | 2013-10-14 16:24:28 |</span><br><span class="line">| 7c3334c97abd81a8631adc69d95b3a25 | 网易筹备游戏海外战略部                     | 2013-11-01 12:24:31 |</span><br><span class="line">| 63e7dd5a6374052661cf7bb97638e905 | Nexus 5万圣夜低调上线                      | 2013-11-01 07:59:06 |</span><br><span class="line">| 60f7b46485af71dc375bfd3ae38fd776 | 传Google Hangouts 将整合短信               | 2013-10-09 07:58:55 |</span><br><span class="line">| 5b0f87cf90c27ed9161693c88951afeb | 黑莓或被Facebook收购：双方高管展开接触     | 2013-10-30 10:12:26 |</span><br><span class="line">+----------------------------------+--------------------------------------------+---------------------+</span><br><span class="line">10 rows in set (10.67 sec)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>再show profiles. profiles中已经有了几条sql,其中最后一条才是我刚刚执行的</p>
+</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">mysql&gt;</span> show profiles;</span><br><span class="line">+----------+------------+---------------------------------------------------------------------------------------------------------+</span><br><span class="line">| Query_ID | Duration   | Query                                                                                                   |</span><br><span class="line">+----------+------------+---------------------------------------------------------------------------------------------------------+</span><br><span class="line">|        1 | 10.62811400 | SELECT id,titile,published_at from spider_record where is_analyze=0 ORDER BY create_time desc LIMIT  10 |</span><br><span class="line">|        2 | 10.78871825 | SELECT id,titile,published_at from spider_record where is_analyze=0 ORDER BY create_time desc LIMIT  10 |</span><br><span class="line">|        3 | 0.05494200 | SHOW FULL TABLES WHERE Table_type != 'VIEW'                                                             |</span><br><span class="line">|        4 | 0.01013250 | SHOW TABLE STATUS                                                                                       |</span><br><span class="line">|        5 | 0.00034200 | SET profiling = 1                                                                                       |</span><br><span class="line">|        6 | 10.65613175 | SELECT id,titile,published_at from spider_record where is_analyze=0 ORDER BY create_time desc LIMIT  10 |</span><br><span class="line">+----------+------------+---------------------------------------------------------------------------------------------------------+</span><br><span class="line">6 rows in set (0.07 sec)</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>再来看看第6条sql的具体执行情况,执行</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">mysql&gt;</span> show profile for query 6;</span><br><span class="line">+----------------------+----------+</span><br><span class="line">| Status               | Duration |</span><br><span class="line">+----------------------+----------+</span><br><span class="line">| starting             | 0.000215 |</span><br><span class="line">| checking permissions | 0.000017 |</span><br><span class="line">| Opening tables       | 0.000085 |</span><br><span class="line">| init                 | 0.000013 |</span><br><span class="line">| System lock          | 0.000020 |</span><br><span class="line">| optimizing           | 0.000020 |</span><br><span class="line">| statistics           | 0.000049 |</span><br><span class="line">| preparing            | 0.000034 |</span><br><span class="line">| Sorting result       | 0.000010 |</span><br><span class="line">| executing            | 0.000007 |</span><br><span class="line">| Sending data         | 10.655393 |</span><br><span class="line">| end                  | 0.000036 |</span><br><span class="line">| query end            | 0.000030 |</span><br><span class="line">| closing tables       | 0.000023 |</span><br><span class="line">| freeing items        | 0.000151 |</span><br><span class="line">| cleaning up          | 0.000033 |</span><br><span class="line">+----------------------+----------+</span><br><span class="line">16 rows in set (0.07 sec)</span><br></pre></td></tr></table></figure>
+
+<p>通过上面的profiles可以知道, 整个sql最耗时的就是中间的sending data这个阶段了.</p>
+<p>所以我们来看一下<a href="https://dev.mysql.com/doc/refman/5.7/en/general-thread-states.html" target="_blank" rel="noopener">官方文档</a>是怎么描述这个状态的:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">The thread is reading and processing rows for a SELECT statement, and sending data to the client. </span><br><span class="line">Because operations occurring during this state tend to perform large amounts of disk access (reads), </span><br><span class="line">it is often the longest-running state over the lifetime of a given query.</span><br><span class="line"></span><br><span class="line">当前线程正在读取和处理一个select语句涉及到的行记录, 并发送到客户端. </span><br><span class="line">出现这个状态时一般是由于当前线程正在频繁地访问磁盘(读磁盘),</span><br><span class="line">所以这个状态一般会占据整个查询的生命周期的大部分时间</span><br></pre></td></tr></table></figure>
+
+<p>也就是说,一般的select语句都是这个sending data占据大部分时间的(虽然说也不应该占10秒). 所以通过profiles, 我们还是不知道, 为啥这个sql会这么慢.</p>
+<p><strong>innodb_buffer_pool_size</strong></p>
+<p>在explain和show profile都没有找到原因之后, 我极度怀疑sql本身是没有问题的. 把注意力放在mysql实例的身上. 首先排查的就是innodb_buffer_pool_size这个参数</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">mysql&gt;</span> show variables like 'innodb_buffer_pool%';</span><br><span class="line">+-------------------------------------+----------------+</span><br><span class="line">| Variable_name                       | Value          |</span><br><span class="line">+-------------------------------------+----------------+</span><br><span class="line">| innodb_buffer_pool_chunk_size       | 8388608        |</span><br><span class="line">| innodb_buffer_pool_dump_at_shutdown | ON             |</span><br><span class="line">| innodb_buffer_pool_dump_now         | OFF            |</span><br><span class="line">| innodb_buffer_pool_dump_pct         | 25             |</span><br><span class="line">| innodb_buffer_pool_filename         | ib_buffer_pool |</span><br><span class="line">| innodb_buffer_pool_instances        | 1              |</span><br><span class="line">| innodb_buffer_pool_load_abort       | OFF            |</span><br><span class="line">| innodb_buffer_pool_load_at_startup  | ON             |</span><br><span class="line">| innodb_buffer_pool_load_now         | OFF            |</span><br><span class="line">| innodb_buffer_pool_size             | 8388608        |</span><br><span class="line">+-------------------------------------+----------------+</span><br><span class="line">10 rows in set (0.09 sec)</span><br></pre></td></tr></table></figure>
+
+<p>查出来一看, innodb_buffer_pool_size才8M左右? 怎么都说不过去吧.</p>
+<p>于是赶紧再看看<a href="https://dev.mysql.com/doc/refman/5.7/en/innodb-parameters.html#sysvar_innodb_buffer_pool_size" target="_blank" rel="noopener">mysql官方文档</a></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">A larger buffer pool requires less disk I/O to access the same table data more than once. On a dedicated database server, you might set the buffer pool size to 80% of the machine&apos;s physical memory size.</span><br><span class="line"></span><br><span class="line">设置更大的buffer pool可以避免多次重复地从硬盘读取同一个表的数据, 所以可以减少磁盘I\O. 在专业的数据库服务器中, 你可以把buffer_pool_size的大小设置为物理内存的80%</span><br></pre></td></tr></table></figure>
+
+<p>官网都建议说innodb_buffer_pool_size应该取物理内存的80%了, 那么这里一个8G内存的服务器才设置8m, 那肯定是不合适的.</p>
+<p>所以后来我们把innodb_buffer_pool_size设置为1G大小, 再执行同样的sql, 执行时间就都降到几十毫秒了.</p>
+<p>问题解决。</p>
+<h3 id="三、问题分析"><a href="#三、问题分析" class="headerlink" title="三、问题分析"></a>三、问题分析</h3><p>先回顾一下我们的问题, 其实有两个:</p>
+<ul>
+<li>为什么innodb_buffer_pool_size会导致sql执行慢</li>
+<li>为什么innodb_buffer_pool_size只影响到了降序排序的sql</li>
+</ul>
+<p>为了回答这个问题, 先来看看mysql innodb引擎的几个术语</p>
+<p><strong>buffer</strong></p>
+<p>buffer 一般是用于临时存储的一块磁盘空间或内存空间.</p>
+<ul>
+<li>数据缓冲在内存中可以提高写的性能, 因为相对于多次写小块数据而言, 大块数据的写入可以减少磁盘的I/O次数.</li>
+<li>数据缓冲在硬盘中更加可靠, 因为在某些极端情况下,系统崩溃的时候,数据还可以从硬盘中恢复过来.</li>
+</ul>
+<p>innodb中用到的buffer主要有几种, buffer pool, doublewrite buffer, change buffer</p>
+<p><strong>buffer pool</strong></p>
+<p>buffer pool是innodb存放缓存数据的内存区域, 这些缓存数据包括innodb的表和索引.</p>
+<ul>
+<li><p>为了提高并发读的性能, buffer pool会被划分为一个个的page, 其中每一个page可以存放若干行的数据.</p>
+</li>
+<li><p>为了方便进行缓存管理, buffer pool被设计成为一个以page为节点的链表.因此一些很少用到的数据,就可以根据LRU算法进行淘汰.</p>
+</li>
+<li><p>在一些内存比较大的系统中, 如果buffer pool比较大, 还可以把buffer pool划分为多个 buffer pool instance 来提高并发度.</p>
+</li>
+</ul>
+<p>因为buffer pool的数据位于内存中, 所以当mysql实例关闭的时候, buffer pool中的数据也会丢失.</p>
+<p>当mysql实例重启后, 又需要一段漫长的时间 重新把数据预热到buffer pool中去(mysql官网称之为<a href="https://dev.mysql.com/doc/refman/5.7/en/glossary.html#glos_warm_up" target="_blank" rel="noopener">warm up</a>).</p>
+<p>从mysql 5.6开始, 可以通过配置一些系统参数, 在mysql关闭的时候, 把buffer pool的状态保存下来.而在mysql重启以后, 再把buffer pool恢复过来. 通过这两个动作, 可以极大地减少warm up的时间.</p>
+<p>在mysql5.7以后, buffer pool的自动保存和加载已经成为默认配置</p>
+<p><strong>innodb_buffer_pool_size</strong></p>
+<p>innodb_buffer_pool_size 就是buffer pool的大小了. 一般来说默认值是128M. 在32位系统中,最大值为2的32次方减1字节. 在64位系统中,最大值为2的64次方减1字节.</p>
+<p>因为buffer pool作为是innodb的数据和索引的缓存, 在物理内存无限大的情况下, buffer pool的也是越大越好. 但是mysql只是建议你最多用到物理内存的80%, 主要是出于以下几点考虑:</p>
+<ul>
+<li>跟操作系统竞争内存, 有可能会导致操作系统的频繁缺页, 导致整个机器的性能下降</li>
+<li>mysql会为它的一些其它数据结构保留部分内存, 所以实际占用内存会比buffer pool多个10%左右</li>
+<li>buffer pool 一般需要分配连续内存, 否则在windows操作系统中会有一些问题</li>
+<li>buffer pool的初始化时间是跟它的大小成正比的</li>
+</ul>
+<p><strong>clustered index 和 secondary index</strong></p>
+<p>clustered index就是聚集索引. 一般是指主键的索引; secondary index辅助索引就是指普通的索引.</p>
+<p>聚集索引和辅助索引都是一颗B+树.而且非叶节点都不存储实际数据. 数据都存在叶节点中.而且每一个叶节点都有一个指针指向下一个叶节点和前一个叶节点. 也就是说所有的叶节点会组成一个双向链表,可以用于范围查询</p>
+<p>聚集索引是以主键(也可能是唯一键)作为索引, 叶节点存储了这个主键对应的行的所有数据.所以可以通过主键直接查到这行的任何一列数据</p>
+<p>辅助索引是以索引的列作为索引, 叶节点存储了索引列的数据和对应的主键. 所以如果select中的列就是索引中的一列的话, 直接在叶节点中就能查到数据. 这就是”索引覆盖”.<br>但是如果select语句中的列不是索引中的一列的话, 就必须在叶节点中查到主键, 再用主键去查到对应列的数据, 这就是”回表”</p>
+<p>在mysql8.0之前, innodb的所有的索引树都是升序的, 虽然创建索引的时候可以指定是asc还是desc, 但是实际创建索引的时候, 都是asc的. 直到mysql8.0中, 索引才支持desc</p>
+<p>好了, 说了这一大堆之后, 开始来回答一下开始的两个问题</p>
+<ul>
+<li>为什么innodb_buffer_pool_size会导致sql执行慢</li>
+</ul>
+<p>这个是很明显的, 当buffer pool不够用的时候, 大多数的数据请求都会落到磁盘数, 磁盘IO性能会比内存读取高出很多个数量级</p>
+<ul>
+<li>为什么innodb_buffer_pool_size只影响到了降序排序的sql</li>
+</ul>
+<p>这个问题其实我也没有很确切的答案. 只能利用现有的条件做一下推测.</p>
+<p>首先我们知道create_time_idx是一颗升序的B+树, 数据都存放在叶节点中, 其中create_time较小的一般集中于树的左边, create_time较大的一般集中于树的右边.</p>
+<p>当sql根据升序排序时, mysql需要找到这颗B+树的最左叶节点, 然后利用叶节点的双向链表直接遍历10条符合条件(is_analyze=0)的即可.</p>
+<p>当sql根据降序排序时, mysql需要找到这颗B+树的最右叶节点, 然后利用叶节点的双链表直接遍历10条符合条件(is_analyze=0)的数据即可.</p>
+<p>另外,由于B+树的内部节点一般都有成千上万个指针, 找最右叶节点时一般都要遍历大部分这些内部节点的指针, 而找最左叶节点时相对遍历的指针会比较少一点. 所以找到最右叶节点会比找到最左叶节点相对耗时一点</p>
+<p>找到最左最右叶节点后, 接下来就是要遍历出10条符合条件(is_analyze=0)的数据了, 这个时候就要看目标数据主要分布在哪了. 如果数据分布在左边, 那么倒序排序(从最右叶节点开始遍历)就需要遍历更多的叶节点,导致buffer pool不够用, 最终需要进行磁盘IO, 导致性能下降. 而如果数据分布在右边的话, 查询性能就会好很多.</p>
+<p>纯文字描述会比较乱,也不好理解 可以参考一下<a href="https://www.cnblogs.com/wy123/p/7003157.html" target="_blank" rel="noopener">这篇文章</a>的两张图. 图中目标的数据就是分布在”右边”, 所以反向扫描的话, 可以很快就能扫描到</p>
+<ul>
+<li>正向扫描</li>
+</ul>
+<p><img src="https://images2015.cnblogs.com/blog/380271/201607/380271-20160723110351701-1938669819.jpg" alt="正向扫描"></p>
+<ul>
+<li>反向扫描</li>
+</ul>
+<p><img src="https://images2015.cnblogs.com/blog/380271/201607/380271-20160723110412404-551193263.jpg" alt="反向扫描"></p>
+<p>下面来证明一下我的推测.</p>
+<p>首先来看一下这个表中的create_time的分布都是怎么样. 可以看到create_time只有四天的数据, 其中主要都是在前两天(b+树的左边)</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; SELECT date(create_time) , count(0) from spider_record GROUP BY date(create_time);</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">| date(create_time) | count(0) |</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">| 2019-06-17        |       52 |</span><br><span class="line">| 2019-06-18        |   141042 |</span><br><span class="line">| 2019-06-19        |      100 |</span><br><span class="line">| 2019-06-20        |       55 |</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">4 rows in <span class="keyword">set</span> (<span class="number">0.18</span> sec)</span><br></pre></td></tr></table></figure>
+
+<p>再看看is_analyze=0的数据分布, 也的确是都分布在b+树”左边”</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; SELECT date(create_time) , count(0) from spider_record where is_analyze=0 GROUP BY date(create_time);</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">| date(create_time) | count(0) |</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">| 2019-06-18        |   141042 |</span><br><span class="line">| 2019-06-20        |       55 |</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">2 rows in <span class="keyword">set</span> (<span class="number">0.18</span> sec)</span><br></pre></td></tr></table></figure>
+
+<p>然后, 我们把6月18日的数据的create_time都增加两天</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">update</span> </span><br><span class="line">  spider_record </span><br><span class="line"><span class="keyword">set</span> </span><br><span class="line">  create_time = create_time + <span class="built_in">INTERVAL</span> <span class="number">2</span> <span class="keyword">day</span> </span><br><span class="line"><span class="keyword">where</span> <span class="built_in">date</span>(create_time) = <span class="string">'2019-06-18'</span>;</span><br></pre></td></tr></table></figure>
+
+<p>最后查看数据分布, 现在不管是所有数据, 还是is_analyze=0的数据, 都是大部分分布在”右边”了</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; SELECT date(create_time) , count(0) from spider_record GROUP BY date(create_time);</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">| date(create_time) | count(0) |</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">| 2019-06-17        |       52 |</span><br><span class="line">| 2019-06-19        |      100 |</span><br><span class="line">| 2019-06-20        |   141097 |</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">3 rows in <span class="keyword">set</span> (<span class="number">0.28</span> sec)</span><br><span class="line"></span><br><span class="line">mysql&gt; <span class="keyword">SELECT</span> <span class="built_in">date</span>(create_time) , <span class="keyword">count</span>(<span class="number">0</span>) <span class="keyword">from</span> spider_record <span class="keyword">where</span> is_analyze=<span class="number">0</span> <span class="keyword">GROUP</span> <span class="keyword">BY</span> <span class="built_in">date</span>(create_time);</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">| date(create_time) | count(0) |</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">| 2019-06-20        |   140683 |</span><br><span class="line">| 2019-06-17        |       52 |</span><br><span class="line">+<span class="comment">-------------------+----------+</span></span><br><span class="line">2 rows in <span class="keyword">set</span> (<span class="number">0.92</span> sec)</span><br></pre></td></tr></table></figure>
+
+<p>最后再来看看这个sql的执行耗时(我在navicat里面连续执行1000多次), 如图. 时间都在几毫秒内了…</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/26/16b9203af11b95dc?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt="mysql日志"></p>
+<p>考虑到有可能是mysql的状态变了, 或其他缓存的原因造成的查询变快了, 我又把create_time为6月20日的数据改成6月18, 即执行下面sql</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">update</span> </span><br><span class="line">  spider_record</span><br><span class="line"><span class="keyword">set</span> </span><br><span class="line">  create_time = create_time - <span class="built_in">INTERVAL</span> <span class="number">2</span> <span class="keyword">day</span></span><br><span class="line"><span class="keyword">where</span> <span class="built_in">date</span>(create_time) = <span class="string">'2019-06-20'</span></span><br></pre></td></tr></table></figure>
+
+<p>然后再来看看那个sql的执行耗时(也是在navicat里面连续执行1000多次), 结果如图, 果然是慢了很多…</p>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/26/16b9203af156b322?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt="mysql日志"></p>
+<h3 id="四、总结"><a href="#四、总结" class="headerlink" title="四、总结"></a>四、总结</h3><p>其实这个问题共性应该不是很大, 因为一般生产环境的innodb_buffer_pool_size是绝对不会配置成8M的.</p>
+<p>另外上面提到的数据分布在”左边”和”右边”的说法, 其实有点牵强, 因为B+树毕竟是一颗平衡树, 都不存在什么偏向左边偏向右边的说法.(然而实验结果支持了这个说法, 我也很绝望~~)</p>
+<p>但是, 从这一次问题排查中, 我们至少可以很确定地认识到了2点:</p>
+<ul>
+<li><p>innodb_buffer_pool_size的参数一定不要配置得太小,否则会极大地影响mysql的性能.</p>
+</li>
+<li><p>一定要注意order by desc. 虽然在mysql 8.0已经支持了降序索引. 但是如果你的索引是升序的而order by又指定desc的话. mysql查询计划的extra中还是会给你指出这个sql会进行”Backward index scan”(如下图), 让你注意到它用了反向扫描.</p>
+</li>
+</ul>
+<p><img src="https://user-gold-cdn.xitu.io/2019/6/26/16b9203af14a5310?imageView2/0/w/1280/h/960/format/webp/ignore-error/1" alt="mysql日志"></p>
+<p>说明反向扫描还是会比正向扫描相对耗时.所以如果sql中能避免反向扫描的话, 最好还是避免反向扫描</p>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src>
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id="gitalk-container" class="comment link" data-ae="false" data-ci data-cs data-r data-o data-a data-d="false">查看评论</div>
+
+
+    </div>
+    
+        <div class="side">
+            <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#一次mysql-order-by-desc-慢的排查"><span class="toc-number">1.</span> <span class="toc-text">一次mysql order by desc 慢的排查</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#一、问题描述"><span class="toc-number">1.0.1.</span> <span class="toc-text">一、问题描述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#二、问题排查"><span class="toc-number">1.0.2.</span> <span class="toc-text">二、问题排查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#三、问题分析"><span class="toc-number">1.0.3.</span> <span class="toc-text">三、问题分析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#四、总结"><span class="toc-number">1.0.4.</span> <span class="toc-text">四、总结</span></a></li></ol></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>
