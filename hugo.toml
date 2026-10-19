@@ -1,0 +1,140 @@
+baseURL = "https://rangerzy.github.io/"
+title = "Ranger 的技术手记"
+theme = "LoveIt"
+languageCode = "zh-CN"
+defaultContentLanguage = "zh-cn"
+hasCJKLanguage = true
+enableRobotsTXT = true
+enableEmoji = true
+
+[pagination]
+  pagerSize = 10
+
+[taxonomies]
+  tag = "tags"
+  category = "categories"
+
+[outputs]
+  home = ["HTML", "RSS", "JSON"]
+
+[menu]
+  [[menu.main]]
+    name = "首页"
+    url = "/"
+    weight = 1
+  [[menu.main]]
+    name = "文章"
+    url = "/posts/"
+    weight = 2
+  [[menu.main]]
+    name = "标签"
+    url = "/tags/"
+    weight = 3
+  [[menu.main]]
+    name = "分类"
+    url = "/categories/"
+    weight = 4
+
+[params]
+  version = "0.3.X"
+  defaultTheme = "auto"
+  title = "Ranger 的技术手记"
+  description = "x² + y² = z² · Ranger 的技术手记"
+  dateFormat = "2006-01-02"
+
+  [params.author]
+    name = "Yong Zhang"
+    link = "https://github.com/rangerzy"
+
+  [params.header.title]
+    name = "Ranger 的技术手记"
+
+  [params.app]
+    title = "Ranger 的技术手记"
+    noFavicon = true
+
+  [params.footer]
+    since = 2023
+
+  [params.home.profile]
+    enable = true
+    title = "Ranger 的技术手记"
+    subtitle = "x² + y² = z²"
+    typeit = false
+    social = true
+
+  [params.social]
+    GitHub = "rangerzy"
+    RSS = true
+
+  [params.search]
+    enable = true
+    type = "lunr"
+    contentLength = 0
+    placeholder = "搜索文章标题或内容"
+    maxResultLength = 10
+    snippetLength = 50
+    highlightTag = "em"
+
+  [params.page]
+    linkToMarkdown = false
+    # Preserve formulas from post-processing of the theme's extended Markdown.
+    ruby = false
+    fraction = false
+    fontawesome = false
+
+    [params.page.toc]
+      enable = true
+      auto = true
+
+    [params.page.code]
+      copy = true
+      maxShownLines = 50
+
+    [params.page.math]
+      enable = true
+      copyTex = true
+      mhchem = true
+
+    [params.page.share]
+      enable = true
+
+    [params.page.comment]
+      enable = true
+
+      [params.page.comment.giscus]
+        enable = true
+        repo = "rangerzy/rangerzy.github.io"
+        repoId = "R_kgDOJ0gRcg"
+        category = "Announcements"
+        # Fill this with data-category-id from https://giscus.app/zh-CN.
+        categoryId = ""
+        lang = "zh-CN"
+        mapping = "pathname"
+        reactionsEnabled = "1"
+        emitMetadata = "0"
+        inputPosition = "bottom"
+        lazyLoading = true
+        lightTheme = "light"
+        darkTheme = "dark"
+
+  [params.cdn]
+    # Publish theme scripts, styles, and fonts on this site.
+    data = ""
+
+[markup]
+  [markup.highlight]
+    noClasses = false
+  [markup.goldmark.renderer]
+    unsafe = true
+  [markup.goldmark.extensions.passthrough]
+    enable = true
+    [markup.goldmark.extensions.passthrough.delimiters]
+      inline = [['$', '$'], ['\(', '\)']]
+      block = [['$$', '$$'], ['\[', '\]']]
+  [markup.tableOfContents]
+    startLevel = 2
+    endLevel = 4
+
+[caches.images]
+  dir = ":cacheDir/images"

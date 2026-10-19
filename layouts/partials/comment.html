@@ -1,0 +1,26 @@
+{{- $comment := .Scratch.Get "comment" | default dict -}}
+{{- $giscus := $comment.giscus | default dict -}}
+{{- /* Render the selected provider only after its repository is configured. */ -}}
+{{- if and $comment.enable $giscus.enable $giscus.repo $giscus.repoId $giscus.categoryId -}}
+  <div id="comments">
+    <div id="giscus" class="comment"></div>
+    <noscript>请启用 JavaScript 查看评论，或访问 <a href="https://github.com/{{ $giscus.repo }}/discussions">GitHub Discussions</a>。</noscript>
+  </div>
+  {{- /* Hugo normalizes config keys; restore the names expected by LoveIt's JS. */ -}}
+  {{- $provider := dict
+    "repo" $giscus.repo
+    "repoId" $giscus.repoId
+    "category" $giscus.category
+    "categoryId" $giscus.categoryId
+    "lang" $giscus.lang
+    "mapping" $giscus.mapping
+    "reactionsEnabled" $giscus.reactionsEnabled
+    "emitMetadata" $giscus.emitMetadata
+    "inputPosition" $giscus.inputPosition
+    "lazyLoading" $giscus.lazyLoading
+    "lightTheme" $giscus.lightTheme
+    "darkTheme" $giscus.darkTheme
+  -}}
+  {{- $config := dict "comment" (dict "giscus" $provider) -}}
+  {{- dict "config" $config | merge (.Scratch.Get "this") | .Scratch.Set "this" -}}
+{{- end -}}

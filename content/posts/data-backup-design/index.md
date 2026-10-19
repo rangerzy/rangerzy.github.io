@@ -1,4 +1,14 @@
-# 数据备份详细设计
++++
+title = "数据备份详细设计"
+date = 2023-08-08T17:54:37+08:00
+draft = false
+author = "Yong Zhang"
+description = "使用 Restic 与 MinIO 设计数据备份方案，涵盖容灾、增量同步、录音数据管理及恢复流程。"
+summary = "使用 Restic 与 MinIO 设计数据备份方案，涵盖容灾、增量同步、录音数据管理及恢复流程。"
+tags = ["数据备份", "Restic", "MinIO", "容灾"]
+categories = ["系统设计"]
+aliases = ["/数据备份详细设计_edc8af285d9f4497bd07dd5cf49f2b01.html"]
++++
 
 <aside>
 💡 数据备份设计，应解决当前备份混乱，录音调听两大核心问题，在核心问题基础上应考虑系统容灾能力、扩展能力、性能、易用等指标
@@ -7,9 +17,9 @@
 
 ### 业务现状
 
-![Untitled](%E6%95%B0%E6%8D%AE%E5%A4%87%E4%BB%BD%E8%AF%A6%E7%BB%86%E8%AE%BE%E8%AE%A1%20edc8af285d9f4497bd07dd5cf49f2b01/Untitled.png)
+![数据备份设计配图 1](backup-01.png)
 
-![Untitled](%E6%95%B0%E6%8D%AE%E5%A4%87%E4%BB%BD%E8%AF%A6%E7%BB%86%E8%AE%BE%E8%AE%A1%20edc8af285d9f4497bd07dd5cf49f2b01/Untitled%201.png)
+![数据备份设计配图 2](backup-02.png)
 
 ### 标识
 
@@ -216,7 +226,7 @@
     	数据库--关联非结构化数据-->对象存储-->结束
     ```
     
-    ![Untitled](%E6%95%B0%E6%8D%AE%E5%A4%87%E4%BB%BD%E8%AF%A6%E7%BB%86%E8%AE%BE%E8%AE%A1%20edc8af285d9f4497bd07dd5cf49f2b01/Untitled%202.png)
+    ![数据备份设计配图 3](backup-03.png)
     
 2. 时序图
     
@@ -251,26 +261,26 @@
     		备份服务器-->>运维: 钉钉通知预警
     ```
     
-    ![Untitled](%E6%95%B0%E6%8D%AE%E5%A4%87%E4%BB%BD%E8%AF%A6%E7%BB%86%E8%AE%BE%E8%AE%A1%20edc8af285d9f4497bd07dd5cf49f2b01/Untitled%203.png)
+    ![数据备份设计配图 4](backup-04.png)
     
 
 ### 功能设计
 
 - 备份源目录截图
     
-    ![Untitled](%E6%95%B0%E6%8D%AE%E5%A4%87%E4%BB%BD%E8%AF%A6%E7%BB%86%E8%AE%BE%E8%AE%A1%20edc8af285d9f4497bd07dd5cf49f2b01/Untitled%204.png)
+    ![数据备份设计配图 5](backup-05.png)
     
 - 备份后对象存储截图
     
-    ![Untitled](%E6%95%B0%E6%8D%AE%E5%A4%87%E4%BB%BD%E8%AF%A6%E7%BB%86%E8%AE%BE%E8%AE%A1%20edc8af285d9f4497bd07dd5cf49f2b01/Untitled%205.png)
+    ![数据备份设计配图 6](backup-06.png)
     
-    ![Untitled](%E6%95%B0%E6%8D%AE%E5%A4%87%E4%BB%BD%E8%AF%A6%E7%BB%86%E8%AE%BE%E8%AE%A1%20edc8af285d9f4497bd07dd5cf49f2b01/Untitled%206.png)
+    ![数据备份设计配图 7](backup-07.png)
     
-    ![Untitled](%E6%95%B0%E6%8D%AE%E5%A4%87%E4%BB%BD%E8%AF%A6%E7%BB%86%E8%AE%BE%E8%AE%A1%20edc8af285d9f4497bd07dd5cf49f2b01/Untitled%207.png)
+    ![数据备份设计配图 8](backup-08.png)
     
 - 备份还原目录
     
-    ![Untitled](%E6%95%B0%E6%8D%AE%E5%A4%87%E4%BB%BD%E8%AF%A6%E7%BB%86%E8%AE%BE%E8%AE%A1%20edc8af285d9f4497bd07dd5cf49f2b01/Untitled%208.png)
+    ![数据备份设计配图 9](backup-09.png)
     
 
 ### 未来

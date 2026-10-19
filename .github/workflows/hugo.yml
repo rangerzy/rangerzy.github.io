@@ -1,0 +1,74 @@
+name: Build and deploy Hugo site
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # LoveIt v0.3.1 supports Hugo 0.128.0–0.145.0. Keep local builds in sync.
+  HUGO_VERSION: 0.145.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source and pinned theme
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Install Hugo Extended
+        run: |
+          archive="hugo_extended_${HUGO_VERSION}_linux-amd64.tar.gz"
+          release="https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}"
+          curl --fail --location --retry 3 "$release/$archive" --output "$RUNNER_TEMP/$archive"
+          curl --fail --location --retry 3 "$release/hugo_${HUGO_VERSION}_checksums.txt" --output "$RUNNER_TEMP/checksums.txt"
+          (cd "$RUNNER_TEMP" && grep "  $archive\$" checksums.txt | sha256sum --check)
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" hugo
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Build production site
+        env:
+          HUGO_CACHEDIR: ${{ runner.temp }}/hugo-cache
+          GISCUS_CATEGORY_ID: ${{ vars.GISCUS_CATEGORY_ID }}
+        run: |
+          if [ -n "$GISCUS_CATEGORY_ID" ]; then
+            export HUGO_PARAMS_PAGE_COMMENT_GISCUS_CATEGORYID="$GISCUS_CATEGORY_ID"
+          fi
+          hugo version
+          hugo --gc --minify --environment production
+
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: public
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
