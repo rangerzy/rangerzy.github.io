@@ -5,6 +5,7 @@ draft = false
 author = "Yong Zhang"
 description = "使用 Restic 与 MinIO 设计数据备份方案，涵盖容灾、增量同步、录音数据管理及恢复流程。"
 summary = "使用 Restic 与 MinIO 设计数据备份方案，涵盖容灾、增量同步、录音数据管理及恢复流程。"
+featuredImagePreview = "cover.jpg"
 tags = ["数据备份", "Restic", "MinIO", "容灾"]
 categories = ["系统设计"]
 aliases = ["/数据备份详细设计_edc8af285d9f4497bd07dd5cf49f2b01.html"]

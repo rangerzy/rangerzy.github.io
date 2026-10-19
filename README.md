@@ -29,6 +29,14 @@ hugo --gc --minify --environment production
 
 输出在 `public/`，该目录不提交到 Git。主题的 CSS、JavaScript、字体及中文搜索资源随网站发布，评论服务由 Giscus 提供。
 
+## 首页外观
+
+首页沿用 LoveIt 官方 Demo 的原生布局：圆形头像、打字机副标题、社交链接和文章横幅封面。顶部显示「Ranger 的技术手记」，头像下方显示 `x² + y² = z²`，中央不再重复站名。
+
+- 头像：`assets/images/avatar.jpg`，来自自己的 GitHub 公开头像，随网站发布。
+- 封面：`content/posts/data-backup-design/cover.jpg`，1600 × 480，通过文章的 `featuredImagePreview` 配置展示；正文原有 9 张配图完整保留。
+- 封面使用内置 imagegen 生成。提示词：浅灰技术文档桌面拼贴，中央青绿色 `DATA BACKUP` 卡片，银色存储设备，柔和自然光，少量浅黄与珊瑚色纸签，适配 10∶3 横幅。使用 Hugo 图像处理生成发布用 JPEG。
+
 ## GitHub Pages 自动发布
 
 1. 打开仓库 **Settings → Pages → Build and deployment**，将 **Source** 设为 **GitHub Actions**。

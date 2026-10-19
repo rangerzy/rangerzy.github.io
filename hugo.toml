@@ -58,9 +58,10 @@ enableEmoji = true
 
   [params.home.profile]
     enable = true
-    title = "Ranger 的技术手记"
+    avatarURL = "/images/avatar.jpg"
+    title = ""
     subtitle = "x² + y² = z²"
-    typeit = false
+    typeit = true
     social = true
 
   [params.social]
